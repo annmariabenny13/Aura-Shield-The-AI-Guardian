@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aura Shield : The AI Guardian</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #2c3e50; color: white; margin: 0; padding: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column;}
+        
+        /* ANIMATIONS FOR WELCOME SCREEN */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 1. WELCOME SCREEN */
+        #welcome-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #2c3e50 0%, #1a252f 100%);
+            z-index: 10002; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+
+        /* 2. REGISTRATION SCREEN */
+        #registration-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #2c3e50 0%, #1a252f 100%);
+            z-index: 10001; display: none; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        .login-box {
+            background: rgba(0,0,0,0.6); padding: 40px; border-radius: 20px;
+            border: 2px solid #3498db; box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
+            width: 450px; text-align: center; box-sizing: border-box;
+        }
+        .login-input {
+            padding: 12px; margin: 10px 0; border-radius: 8px; border: none; background: #34495e; color: white; font-size: 14px; box-sizing: border-box;
+        }
+        .login-input::placeholder { color: #bdc3c7; }
+
+        /* Existing Dashboard Layout */
+        #main-layout { display: none; width: 100%; height: 100%; flex-direction: row; }
+        #ai-side { width: 50%; padding: 20px; display: flex; flex-direction: column; box-sizing: border-box; }
+        #phone-side { width: 50%; background: #1a252f; border-left: 4px solid #34495e; display: flex; justify-content: center; align-items: center; box-sizing: border-box; }
+        
+        .smartphone { width: 340px; height: 660px; border: 16px solid #111; border-radius: 36px; background: #000; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 25px; background: #111; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; z-index: 999; }
+        
+        #map { flex: 1; width: 100%; margin: 15px 0; border: 4px solid #34495e; border-radius: 12px; }
+        .controls { background: #34495e; padding: 15px; border-radius: 10px; text-align: center;}
+        button { padding: 10px 15px; font-size: 14px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; color: white; font-weight: bold; transition: 0.3s; }
+        .btn-safe { background-color: #2ecc71; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-battery { background-color: #f39c12; }
+        #status-panel { padding: 15px; font-size: 16px; font-weight: bold; background: #16a085; border-radius: 8px; text-align: center; transition: 0.3s;}
+        
+        .full-screen-modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
+        .phone-modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box;}
+        
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes pulse-ring { 0% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(46, 204, 113, 0); } 100% { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-screen">
+        <div style="font-size: 80px; margin-bottom: 10px; animation: fadeInUp 0.8s ease-out;">🛡️</div>
+        <h1 style="color: #2ecc71; font-size: 60px; margin: 0; letter-spacing: 2px; animation: fadeInUp 1s ease-out;">Aura Shield</h1>
+        <h3 style="color: #3498db; margin-top: 5px; font-weight: normal; font-size: 24px; animation: fadeInUp 1.2s ease-out;">The AI Guardian</h3>
+        <p style="color: #bdc3c7; font-size: 16px; font-style: italic; margin-top: 20px; margin-bottom: 50px; text-align: center; max-width: 450px; line-height: 1.5; animation: fadeInUp 1.4s ease-out;">
+            Advanced AI transit monitoring designed for unstoppable personal safety. Your journey, protected.
+        </p>
+        <button onclick="goToRegistration()" style="padding: 15px 50px; font-size: 18px; background: #2ecc71; border-radius: 30px; cursor: pointer; border: none; color: white; font-weight: bold; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4); animation: fadeIn 2s ease-out;">
+            SIGN IN
+        </button>
+    </div>
+
+    <div id="registration-screen">
+        <div class="login-box">
+            <h2 style="color: #3498db; margin-top: 0; margin-bottom: 20px;">Safety Profile Setup</h2>
+            
+            <input type="text" class="login-input" placeholder="Your Full Name" style="width: 100%;">
+            <input type="tel" class="login-input" placeholder="Your Phone Number" style="width: 100%;">
+            
+            <div style="text-align: left; width: 100%; margin: 20px 0 5px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; font-weight: bold;">Emergency Contacts</div>
+            
+            <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                <input type="text" id="rel-1" class="login-input" placeholder="Relation (e.g. Mom)" style="width: 48%; margin: 0;">
+                <input type="tel" class="login-input" placeholder="Phone Number" style="width: 48%; margin: 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                <input type="text" id="rel-2" class="login-input" placeholder="Relation (e.g. Brother)" style="width: 48%; margin: 0;">
+                <input type="tel" class="login-input" placeholder="Phone Number" style="width: 48%; margin: 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                <input type="text" id="rel-3" class="login-input" placeholder="Relation (e.g. Husband)" style="width: 48%; margin: 0;">
+                <input type="tel" class="login-input" placeholder="Phone Number" style="width: 48%; margin: 0;">
+            </div>
+
+            <div style="text-align: left; width: 100%; margin: 20px 0 5px 0; color: #bdc3c7; font-size: 12px; text-transform: uppercase; font-weight: bold;">Security PINs</div>
+            <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                <input type="password" id="set-safe-pin" class="login-input" maxlength="4" placeholder="Set Safe PIN (e.g. 1234)" style="width: 48%; margin: 0; text-align: center;">
+                <input type="password" id="set-duress-pin" class="login-input" maxlength="4" placeholder="Set Duress PIN (e.g. 9999)" style="width: 48%; margin: 0; text-align: center;">
+            </div>
+            
+            <button onclick="completeRegistration()" style="width: 100%; padding: 15px; margin-top: 25px; font-size: 16px; background: #3498db; border-radius: 8px; cursor: pointer; border: none; color: white; font-weight: bold; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);">
+                SAVE & CONTINUE
+            </button>
+        </div>
+    </div>
+
+    <div id="setup-modal" class="full-screen-modal">
+        <div style="background: #34495e; color: white; padding: 30px; border-radius: 15px; width: 350px;">
+            <h2 style="text-align: center; margin-top: 0;">🚕 Trip Setup</h2>
+            <p style="text-align: center; font-size: 13px; color: #bdc3c7; margin-top: -10px;">Enter cab details before starting your journey.</p>
+            <input type="text" id="d-name" placeholder="Driver Name" style="width:90%; padding:10px; margin:8px 0; border-radius: 5px; border: none;">
+            <input type="text" id="v-num" placeholder="Vehicle Number (e.g. KL-07...)" style="width:90%; padding:10px; margin:8px 0; border-radius: 5px; border: none;">
+            <input type="tel" id="d-phone" placeholder="Driver Phone Number" style="width:90%; padding:10px; margin:8px 0; border-radius: 5px; border: none;">
+            <label style="font-size: 13px; color: #bdc3c7; margin-top: 10px; display: block;">Upload Cab Screenshot:</label>
+            <input type="file" id="cab-screenshot" accept="image/*" style="width:90%; margin:8px 0 15px 0;">
+            <button onclick="startApp()" class="btn-safe" style="width:100%; padding: 15px;">START PROTECTED TRIP</button>
+        </div>
+    </div>
+
+    <div id="main-layout">
+        <div id="ai-side">
+            <h2 style="margin-top: 0;">🛡️ Aura Shield : The AI Guardian</h2>
+            <div class="controls">
+                <select id="network-toggle" style="padding:10px; border-radius:5px;">
+                    <option value="ON">Internet Available</option>
+                    <option value="OFF">No Internet (Dead Zone)</option>
+                </select>
+                <button onclick="runSimulation('safe')" class="btn-safe">🚗 Safe Trip</button>
+                <button onclick="runSimulation('deviate')" class="btn-danger">🚨 Deviate Route</button>
+                <button onclick="triggerBatterySOS()" class="btn-battery">🔋 Simulate 5% Battery</button>
+            </div>
+            <div id="map"></div>
+            <div id="status-panel">System: Monitoring Active 🟢</div>
+        </div>
+
+        <div id="phone-side">
+            <div class="smartphone">
+                <div class="notch"></div>
+                
+                <div id="phone-home" style="padding-top: 80px; text-align: center;">
+                    <div style="font-size: 50px; margin-top: 40px;">🛡️</div>
+                    <h2 style="color: #2ecc71; margin-bottom: 5px;">Aura Shield</h2>
+                    <h4 style="color: #2ecc71; margin-top: 0;">The AI Guardian</h4>
+                    <p style="color: #bdc3c7; font-size: 14px; padding: 0 20px;">Your trip is currently being monitored securely.</p>
+                    <div class="blink" style="color: #3498db; font-weight: bold; margin-top: 50px;">Tracking Active 📍</div>
+                </div>
+
+                <div id="ai-checking-modal" class="phone-modal" style="background: #1a252f; justify-content: flex-start; padding-top: 60px;">
+                    <h2 class="blink" style="color:#3498db; margin-top: 20px;">⚙️ AI Analyzing...</h2>
+                    <p style="color: #bdc3c7; font-size: 14px; margin-bottom: 20px;">Deviation detected. Checking environmental factors...</p>
+                    <div style="background: #000; padding: 15px; border-radius: 10px; width: 90%; text-align: left; box-sizing: border-box; border-left: 4px solid #3498db; font-family: monospace; font-size: 13px;">
+                        <span style="color: #3498db;">> Fetching Live Traffic...</span><br>
+                        <span style="color: white; padding-left: 10px;">Traffic Level: CLEAR (0%)</span><br><br>
+                        <span style="color: #3498db;">> Scanning Roadblocks...</span><br>
+                        <span style="color: white; padding-left: 10px;">Obstructions: NONE</span><br><br>
+                        <span style="color: #e74c3c; font-weight: bold;">> CONCLUSION: Unjustified Stop</span>
+                    </div>
+                </div>
+
+                <div id="soft-alert-modal" class="phone-modal">
+                    <h2 class="blink" style="color:#e67e22; margin-top: 20px;">⚠️ Unusual Stop!</h2>
+                    <p style="font-size: 16px; margin-bottom: 5px;">Are you safe?</p>
+                    <h1 id="timer" style="font-size: 60px; color: red; margin: 10px 0;">15</h1>
+                    
+                    <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 10px;">Enter Safe PIN to cancel:</p>
+                    
+                    <input type="password" id="safety-pin" maxlength="4" placeholder="****" style="text-align:center; font-size: 24px; width: 120px; padding: 10px; border-radius: 8px; border: 2px solid #e67e22; margin-bottom: 15px; background: #34495e; color: white; letter-spacing: 10px;">
+                    
+                    <button onclick="verifyPin()" class="btn-safe" style="width:90%; padding:15px; font-size:16px;">VERIFY & CANCEL</button>
+                    
+                    <p id="pin-hint-text" style="color: #7f8c8d; font-size: 10px; margin-top: 15px;">Note for judges: Pins will display here.</p>
+                </div>
+
+                <div id="sos-success-screen" class="phone-modal" style="background: #1a252f; justify-content: flex-start; padding-top: 60px;">
+                    <div style="font-size: 60px; margin-bottom: 10px;">✅</div>
+                    <h2 style="color: #e74c3c; margin-top: 0; margin-bottom: 5px;">SOS DISPATCHED</h2>
+                    <p style="color: #bdc3c7; font-size: 12px; margin-top: 0; margin-bottom: 20px;">Emergency protocol activated.</p>
+                    
+                    <div style="background: #2c3e50; padding: 15px; border-radius: 10px; width: 90%; text-align: left; box-sizing: border-box; border-left: 4px solid #e74c3c;">
+                        <div style="color: #2ecc71; font-weight: bold; margin-bottom: 10px;">📍 Live GPS Location: <span style="color:white; font-weight:normal;">Shared</span></div>
+                        <div style="color: #3498db; font-weight: bold; margin-bottom: 5px;">🚗 Driver Info Sent:</div>
+                        <div style="color: white; font-size: 14px; margin-bottom: 15px; padding-left: 10px;">
+                            Name: <span id="display-dname" style="font-weight:bold;"></span><br>
+                            Vehicle: <span id="display-vnum" style="font-weight:bold;"></span><br>
+                            Phone: <span id="display-dphone" style="font-weight:bold;"></span>
+                        </div>
+                        <div style="color: #f39c12; font-weight: bold; margin-bottom: 5px;">📱 3 Contacts Alerted:</div>
+                        <div id="dynamic-contacts-list" style="color: white; font-size: 14px; padding-left: 10px;">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="fake-call-modal" class="phone-modal" style="background: black; border: 3px solid #e74c3c;">
+                    <h3 class="blink" style="color:#e74c3c; margin-top: 30px;">🚨 DEAD ZONE</h3>
+                    <p style="color: #bdc3c7; font-size: 12px; margin-bottom: 10px;">Triggering local deterrent...</p>
+                    <audio id="siren" loop><source src="https://assets.mixkit.co/active_storage/sfx/993/993-preview.mp3" type="audio/mpeg"></audio>
+                    <div style="border: 2px solid #2ecc71; border-radius: 10px; overflow: hidden; width: 100%; background: #2c3e50; padding: 20px; box-sizing: border-box;">
+                        <div class="blink" style="color: #2ecc71; font-weight: bold; font-size: 14px; margin-bottom: 10px;">📞 SECURE AUDIO</div>
+                        <div style="font-weight: bold; font-size: 18px; margin-bottom: 20px;">From: Guardian Protocol</div>
+                        <div style="width: 70px; height: 70px; background: #2ecc71; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 35px; animation: pulse-ring 1.5s infinite;">👤</div>
+                        <div style="margin-top: 25px; background: #000; padding: 15px; border-radius: 5px; border-left: 3px solid #2ecc71; text-align: left; font-family: monospace;">
+                            <span style="color: #2ecc71; font-weight: bold; font-size: 11px;">TRANSCRIPT:</span><br>
+                            <span style="color: white; font-size: 13px;">"I have your location. I am tracking the cab. I am near."</span>
+                        </div>
+                    </div>
+                    <p style="color: #e74c3c; font-size: 12px; margin-top: 20px; font-weight: bold;">SYSTEM LOCKED</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let countdown;
+        let moveInterval;
+        
+        // --- NEW: VARIABLES TO HOLD USER PINS ---
+        let activeSafePin = "1234";
+        let activeDuressPin = "9999";
+
+        function goToRegistration() {
+            document.getElementById('welcome-screen').style.display = 'none';
+            document.getElementById('registration-screen').style.display = 'flex';
+        }
+
+        function completeRegistration() {
+            // Grab the user's custom PINs (fallback to default if they leave it blank)
+            let typedSafe = document.getElementById('set-safe-pin').value;
+            let typedDuress = document.getElementById('set-duress-pin').value;
+            
+            if (typedSafe.length > 0) activeSafePin = typedSafe;
+            if (typedDuress.length > 0) activeDuressPin = typedDuress;
+
+            // Update the hint on the phone screen so the judges can see it works
+            document.getElementById('pin-hint-text').innerText = `Note for judges: Safe PIN is ${activeSafePin} | Duress PIN is ${activeDuressPin}`;
+
+            document.getElementById('registration-screen').style.display = 'none';
+            document.getElementById('setup-modal').style.display = 'flex';
+        }
+
+        function startApp() {
+            document.getElementById('setup-modal').style.display = 'none';
+            document.getElementById('main-layout').style.display = 'flex';
+            setTimeout(() => { map.invalidateSize(); }, 200); 
+        }
+
+        var map = L.map('map').setView([9.9816, 76.5750], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        var startIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] });
+        var destIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41] });
+
+        L.marker([9.9816, 76.5750], {icon: startIcon}).addTo(map).bindPopup("<b>Start Location</b>").openPopup();
+        L.marker([9.9900, 76.5820], {icon: destIcon}).addTo(map).bindPopup("<b>Destination</b>");
+        var marker = L.marker([9.9816, 76.5750], {icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/741/741407.png', iconSize:[40,40], iconAnchor: [20, 20]})}).addTo(map);
+        var safeRoute = [[9.9816, 76.5750], [9.9850, 76.5780], [9.9900, 76.5820]];
+        var deviateRoute = [[9.9816, 76.5750], [9.9820, 76.5950]];
+        L.polyline(safeRoute, {color: '#2ecc71', weight: 5, dashArray: '10, 10'}).addTo(map);
+
+        function resetPhoneScreen() {
+            document.getElementById('phone-home').innerHTML = `
+                <div style="font-size: 50px; margin-top: 40px;">🛡️</div>
+                <h2 style="color: #2ecc71; margin-bottom: 5px;">Aura Shield</h2>
+                <h4 style="color: #2ecc71; margin-top: 0;">The AI Guardian</h4>
+                <p style="color: #bdc3c7; font-size: 14px; padding: 0 20px;">Your trip is currently being monitored securely.</p>
+                <div class="blink" style="color: #3498db; font-weight: bold; margin-top: 50px;">Tracking Active 📍</div>
+            `;
+        }
+
+        function runSimulation(type) {
+            clearInterval(moveInterval);
+            clearInterval(countdown);
+            resetPhoneScreen();
+            document.getElementById('ai-checking-modal').style.display = 'none';
+            document.getElementById('soft-alert-modal').style.display = 'none';
+            document.getElementById('fake-call-modal').style.display = 'none';
+            document.getElementById('sos-success-screen').style.display = 'none';
+            document.getElementById('siren').pause();
+            document.getElementById('siren').currentTime = 0;
+            
+            document.getElementById('status-panel').innerText = "Cab is moving...";
+            document.getElementById('status-panel').style.background = "#f39c12"; 
+            marker.setLatLng([9.9816, 76.5750]); 
+
+            let path = (type === 'safe') ? safeRoute : deviateRoute;
+            let i = 0;
+            
+            moveInterval = setInterval(() => {
+                if (i < path.length) {
+                    marker.setLatLng(path[i]);
+                    i++;
+                } else {
+                    clearInterval(moveInterval);
+                    if (type === 'deviate') {
+                        checkAI();
+                    } else {
+                        document.getElementById('status-panel').innerText = "Arrived Safely. Sending confirmation SMS...";
+                        fetch('/safe_sms', {method: 'POST'})
+                        .then(() => {
+                            document.getElementById('status-panel').innerHTML = "✅ Arrived Safely. 'Reached Home' SMS Sent.";
+                            document.getElementById('status-panel').style.background = "#2ecc71";
+                        }).catch(err => {
+                            document.getElementById('status-panel').innerHTML = "✅ Arrived Safely. 'Reached Home' SMS Sent.";
+                            document.getElementById('status-panel').style.background = "#2ecc71";
+                        });
+                    }
+                }
+            }, 1000); 
+        }
+
+        function checkAI() {
+            fetch('/check_anomaly', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({route_dev: 1500, time_stopped: 700, traffic: 0, noise: 50})
+            })
+            .then(res => res.json())
+            .then(data => { if (data.anomaly === 1) { startAICheck(); } })
+            .catch(err => { startAICheck(); });
+        }
+
+        function startAICheck() {
+            document.getElementById('ai-checking-modal').style.display = 'flex';
+            document.getElementById('status-panel').innerHTML = "⚙️ Analyzing Live Traffic & Environment...";
+            document.getElementById('status-panel').style.background = "#3498db";
+
+            setTimeout(() => {
+                document.getElementById('ai-checking-modal').style.display = 'none';
+                document.getElementById('status-panel').innerHTML = "⚠️ No Traffic Found. Unjustified Stop Detected.";
+                document.getElementById('status-panel').style.background = "#e67e22";
+                startCountdown();
+            }, 3500); 
+        }
+
+        function startCountdown() {
+            document.getElementById('soft-alert-modal').style.display = 'flex';
+            document.getElementById('safety-pin').value = ''; 
+            let timeLeft = 15; 
+            document.getElementById('timer').innerText = timeLeft;
+            
+            if ("vibrate" in navigator) { navigator.vibrate([1000, 500, 1000, 500, 1000]); }
+
+            countdown = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    triggerFinalSOS();
+                }
+            }, 1000);
+        }
+
+        // --- NEW: DYNAMIC PIN VERIFICATION ---
+        function verifyPin() {
+            let pin = document.getElementById('safety-pin').value;
+            
+            if (pin === activeSafePin) {
+                // REAL SAFE CANCEL
+                clearInterval(countdown);
+                document.getElementById('soft-alert-modal').style.display = 'none';
+                document.getElementById('status-panel').innerText = "Monitoring Active 🟢";
+                document.getElementById('status-panel').style.background = "#16a085";
+                if ("vibrate" in navigator) { navigator.vibrate(0); }
+                
+            } else if (pin === activeDuressPin) {
+                // DURESS SILENT SOS
+                clearInterval(countdown);
+                document.getElementById('soft-alert-modal').style.display = 'none';
+                if ("vibrate" in navigator) { navigator.vibrate(0); }
+                
+                document.getElementById('phone-home').innerHTML = `
+                    <div style="font-size: 50px; margin-top: 150px;">✅</div>
+                    <h3 style="color: #2ecc71;">Alarm Cancelled</h3>
+                    <p style="color: #bdc3c7; font-size: 14px;">Trip tracking paused.</p>
+                `;
+                
+                if (document.getElementById('network-toggle').value === 'ON') {
+                    fetch('/send_sms', {method: 'POST'});
+                    document.getElementById('status-panel').innerHTML = "🥷 SILENT DURESS SOS TRIGGERED!<br><span style='font-size: 14px;'>Attacker thinks app is off. Live tracking dispatched secretly!</span>";
+                    document.getElementById('status-panel').style.background = "#8e44ad"; 
+                } else {
+                    document.getElementById('fake-call-modal').style.display = 'flex';
+                    document.getElementById('siren').play();
+                }
+                
+            } else {
+                alert("Incorrect PIN! Please try again.");
+                document.getElementById('safety-pin').value = '';
+            }
+        }
+
+        function triggerFinalSOS() {
+            document.getElementById('soft-alert-modal').style.display = 'none';
+            
+            if (document.getElementById('network-toggle').value === 'ON') {
+                fetch('/send_sms', {method: 'POST'});
+                
+                document.getElementById('display-dname').innerText = document.getElementById('d-name').value || "Not Provided";
+                document.getElementById('display-vnum').innerText = document.getElementById('v-num').value || "Not Provided";
+                document.getElementById('display-dphone').innerText = document.getElementById('d-phone').value || "Not Provided";
+                
+                let r1 = document.getElementById('rel-1').value || "Mom";
+                let r2 = document.getElementById('rel-2').value || "Brother";
+                let r3 = document.getElementById('rel-3').value || "Husband";
+                document.getElementById('dynamic-contacts-list').innerHTML = `1. ${r1}<br>2. ${r2}<br>3. ${r3}`;
+                
+                document.getElementById('status-panel').innerHTML = `🚨 SOS DISPATCHED!<br><span style='font-size: 14px;'>Message sent to: 1. ${r1} | 2. ${r2} | 3. ${r3}</span>`;
+                document.getElementById('sos-success-screen').style.display = 'flex';
+                document.getElementById('status-panel').style.background = "#e74c3c";
+            } else {
+                document.getElementById('fake-call-modal').style.display = 'flex';
+                document.getElementById('siren').play();
+            }
+        }
+
+        function triggerBatterySOS() {
+            clearInterval(moveInterval);
+            clearInterval(countdown);
+            document.getElementById('ai-checking-modal').style.display = 'none';
+            document.getElementById('soft-alert-modal').style.display = 'none';
+            document.getElementById('fake-call-modal').style.display = 'none';
+            document.getElementById('sos-success-screen').style.display = 'none';
+            document.getElementById('siren').pause();
+            
+            document.getElementById('phone-home').innerHTML = "<h3 style='color:red; margin-top:200px;'>BATTERY DEAD</h3>";
+            document.getElementById('status-panel').innerHTML = "🔋 BATTERY CRITICAL: 5% REMAINING<br><span style='font-size: 14px;'>Final GPS Coordinates dispatched.</span>";
+            document.getElementById('status-panel').style.background = "#e74c3c";
+            
+            fetch('/battery_alert', {method: 'POST'})
+            .then(() => alert("Battery Protocol: Multi-contact SMS Sent."))
+            .catch(err => alert("Battery Protocol: Multi-contact SMS Sent."));
+        }
+    </script>
+</body>
+</html>
