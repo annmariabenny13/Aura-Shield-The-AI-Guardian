@@ -8,9 +8,9 @@ model = joblib.load('model/model.pkl')
 # ==========================================
 # TWILIO CONFIGURATION
 # ==========================================
-TWILIO_ACCOUNT_SID = "your_twilio_sid_here"
-TWILIO_AUTH_TOKEN = "your_twilio_auth_token_here"      
-TWILIO_PHONE = '+16205915037'                     
+TWILIO_ACCOUNT_SID = 'your_actual_sid_here'
+TWILIO_AUTH_TOKEN = 'your_actual_token_here'
+TWILIO_PHONE_NUMBER = 'your_twilio_number_here'                   
 EMERGENCY_CONTACT = '+915678987656'              
 
 def dispatch_twilio_sms(message_body):
@@ -44,10 +44,23 @@ def check_anomaly():
 
 @app.route('/send_sms', methods=['POST'])
 def send_sms():
-    body = "🚨 AURASHIELD URGENT: Ann Maria is not responding. Cab deviated and stopped. Live Location: http://maps.google.com/?q=9.9816,76.5750"
-    if dispatch_twilio_sms(body):
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error"}), 500
+    try:
+        # 1. Initialize the client
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        
+        # 2. Set the message body
+        body = "🚨 AURASHIELD URGENT: Ann Maria is not responding. Cab deviated and stopped. Live Location: http://maps.google.com/0"
+        
+        # 3. Call your dispatch function
+        if dispatch_twilio_sms(body):
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"status": "error"}), 500
+            
+    except Exception as e:
+        # 4. Catch any errors so the app doesn't crash!
+        print(f"❌ TWILIO ERROR: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/battery_alert', methods=['POST'])
 def battery_alert():
